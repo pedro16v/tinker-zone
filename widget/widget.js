@@ -195,21 +195,37 @@ import { initLiveLayer } from "./live-layer.js";
     else placeDefault();
   })();
 
-  // ---- self-heal: keep visible, on-top, and within the viewport ----
+  // ---- self-heal: keep visible & on-top, WITHOUT stealing focus ----
   function selfHeal() {
-    // Re-assert the host's own inline styles (defends against forced reflows/overrides).
-    Object.assign(host.style, baseHostStyle);
-    // If we drifted off-screen (e.g. viewport resize), snap back to a safe corner.
+    // Re-assert only the properties that keep the widget visible and on top. We deliberately
+    // do NOT reset positioning here, and we bail out entirely while the user is interacting —
+    // re-appending the host or resetting position drops input focus (the mobile-keyboard bug).
+    host.style.position = "fixed";
+    host.style.zIndex = Z;
+    host.style.visibility = "visible";
+    host.style.opacity = "1";
+    host.style.display = "block";
+    host.style.pointerEvents = "auto";
+    host.style.transform = "none";
+    host.style.filter = "none";
+
+    // While a field is focused, the panel is open, or a drag is in progress — leave it alone.
+    if (root.activeElement || !panel.hidden || drag) return;
+
+    // Idle only: snap back if off-screen, and re-append to win stacking only if truly covered.
     const r = host.getBoundingClientRect();
-    const off = r.right < 24 || r.bottom < 24 || r.left > window.innerWidth - 24 || r.top > window.innerHeight - 24;
-    if (off || r.width === 0 || r.height === 0) placeDefault();
-    // If something is painted over our anchor, re-append to the end of <html> to win stacking.
+    if (
+      r.width === 0 || r.height === 0 ||
+      r.right < 24 || r.bottom < 24 ||
+      r.left > window.innerWidth - 24 || r.top > window.innerHeight - 24
+    ) {
+      placeDefault();
+      return;
+    }
     const ax = Math.min(window.innerWidth - 8, Math.max(8, r.left + Math.min(r.width, 40) / 2));
     const ay = Math.min(window.innerHeight - 8, Math.max(8, r.top + Math.min(r.height, 24) / 2));
     const top = document.elementFromPoint(ax, ay);
-    if (top && top !== host) {
-      (document.documentElement || document.body).appendChild(host);
-    }
+    if (top && top !== host) (document.documentElement || document.body).appendChild(host);
   }
   updateCount();
   selfHeal();
