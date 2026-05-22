@@ -1,0 +1,47 @@
+name: validate
+
+# Required status check for every PR into main. The diff-scope gate runs FIRST and fails
+# the build if any file outside /canvas/ changed — this is the hard enforcement of
+# "the automation only edits the canvas". Branch protection makes this check un-bypassable.
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Fetch base branch
+        run: git fetch origin "${{ github.base_ref }}" --depth=1
+
+      - name: Diff-scope gate (only canvas/ may change)
+        run: node scripts/validate-diff-scope.js
+        env:
+          GITHUB_BASE_REF: ${{ github.base_ref }}
+
+      - name: Install dependencies (frozen lockfile)
+        run: npm ci
+
+      - name: Content scanner
+        run: node scripts/content-scanner.js
+
+      - name: Build
+        run: npm run build
+
+      - name: Install Playwright (chromium)
+        run: npx playwright install --with-deps chromium
+
+      - name: Widget tests (375 / 768 / 1440)
+        run: npm test

@@ -1,0 +1,37 @@
+/* Canvas v0 — a near-blank starting state. The --tz-* custom properties below are the
+   knobs the live layer can turn (set_css_var / set_theme), so v0 already responds to them. */
+:root {
+  --tz-bg: #0f1115;
+  --tz-fg: #e8eaed;
+  --tz-accent: #66ccff;
+  --tz-font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --tz-radius: 12px;
+  --tz-space: 16px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  background: var(--tz-bg);
+  color: var(--tz-fg);
+  font-family: var(--tz-font);
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+#canvas-title {
+  font-size: clamp(2rem, 8vw, 5rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}

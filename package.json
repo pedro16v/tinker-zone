@@ -1,0 +1,17 @@
+{
+  "name": "tinker-zone",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A collaborative website that anyone can reshape via natural-language prompts.",
+  "license": "MIT",
+  "scripts": {
+    "build": "node scripts/build.js",
+    "scan": "node scripts/content-scanner.js",
+    "validate:diff-scope": "node scripts/validate-diff-scope.js",
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  }
+}
