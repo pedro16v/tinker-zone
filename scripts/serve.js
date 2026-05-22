@@ -37,3 +37,5 @@ createServer(async (req, res) => {
     res.writeHead(404).end("not found");
   }
 }).listen(PORT, () => console.log(`serve: http://localhost:${PORT}`));
+
+// ci gate test: protected-path change (must be blocked)
