@@ -19,7 +19,7 @@
           "properties": {
             "op": { "const": "set_css_var" },
             "name": { "enum": ["--tz-bg", "--tz-fg", "--tz-accent", "--tz-font", "--tz-radius", "--tz-space"] },
-            "value": { "type": "string", "maxLength": 40 }
+            "value": { "type": "string", "maxLength": 200 }
           }
         },
         {

@@ -36,6 +36,14 @@ Op shapes:
          "system-ui, -apple-system, \\"Segoe UI\\", Roboto, sans-serif"
          "Georgia, \\"Times New Roman\\", serif"
          "\\"Courier New\\", ui-monospace, monospace"
+       Gradients (ONLY for --tz-bg, never for --tz-fg or --tz-accent):
+         "linear-gradient(<dir>, <stop>, <stop>[, ...up to 6])"
+         "repeating-linear-gradient(<dir>, <stop>, <stop>[, ...up to 6])"
+         <dir> = "to top" | "to right" | "to bottom" | "to left" | "to top right" | "to bottom right" | "to top left" | "to bottom left" | "<n>deg"
+         <stop> = "<color>" or "<color> <pos>" or "<color> <pos> <pos>" where <pos> is "<n>%" or "<n>px"
+         Colors inside gradients must be hex (#rgb / #rrggbb) or named (no rgb()).
+         A repeating-linear-gradient with two contrasting stops gives a stripe pattern.
+         A true 2D checkerboard isn't expressible — use diagonal stripes (repeating-linear-gradient at 45deg) as the closest approximation.
   2) set_text     { "op":"set_text", "target":<safe selector>, "value":<≤ 280> }
   3) set_theme    { "op":"set_theme", "theme":<one of light/dark/sunset/terminal/pastel> }
        Each theme is a bundle of --tz-bg/--tz-fg/--tz-accent values.
@@ -86,6 +94,21 @@ output: {"v":1,"ops":[{"op":"add_element","kind":"emoji-badge","container":"#can
 
 input: a tiny cat in the corner
 output: {"v":1,"ops":[{"op":"add_element","kind":"emoji-badge","container":"#canvas-root","text":"🐈"}]}
+
+input: top half black, bottom half white
+output: {"v":1,"ops":[{"op":"set_css_var","name":"--tz-bg","value":"linear-gradient(to bottom, #000 50%, #fff 50%)"}]}
+
+input: rainbow background
+output: {"v":1,"ops":[{"op":"set_css_var","name":"--tz-bg","value":"linear-gradient(to right, red, orange, yellow, green, blue, purple)"}]}
+
+input: diagonal stripes black and white
+output: {"v":1,"ops":[{"op":"set_css_var","name":"--tz-bg","value":"repeating-linear-gradient(45deg, #000 0 30px, #fff 30px 60px)"}]}
+
+input: make 50% of the top of the background checkered
+output: {"v":1,"ops":[{"op":"set_css_var","name":"--tz-bg","value":"repeating-linear-gradient(45deg, #000 0 30px, #fff 30px 60px)"}]}
+
+input: sunset gradient sky
+output: {"v":1,"ops":[{"op":"set_css_var","name":"--tz-bg","value":"linear-gradient(to bottom, #ff7e5f, #feb47b)"}]}
 
 Output ONLY the JSON object.`;
 

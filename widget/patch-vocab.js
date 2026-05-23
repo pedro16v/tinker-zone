@@ -36,7 +36,9 @@ export const ATTR_ALLOWLIST = ["class", "alt", "aria-label", "title"];
 // Conservative image policy: empty host list = same-origin (root-relative) images only.
 export const IMAGE_HOSTS = [];
 
-export const LIMITS = { text: 280, attr: 120, cssValue: 40, imageSrc: 300 };
+// cssValue caps a flat color/length; cssValueBg is the larger cap for --tz-bg, which may
+// also hold a parsed linear-gradient (validated stop-by-stop, never freeform CSS).
+export const LIMITS = { text: 280, attr: 120, cssValue: 40, cssValueBg: 200, imageSrc: 300 };
 
 // A safe selector is a single #id / .class / tag token; never the widget host.
 export const SAFE_SELECTOR = /^[.#]?[A-Za-z][\w-]{0,63}$/;

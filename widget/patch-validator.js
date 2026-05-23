@@ -16,6 +16,65 @@ function isColor(v) {
   return typeof v === "string" && (HEX.test(v) || RGB.test(v) || NAMED_COLORS.has(v.toLowerCase()));
 }
 
+// Gradient parsing — only used for --tz-bg. We never accept freeform CSS: a gradient is
+// rebuilt token by token here (direction + N color stops), so anything the parser doesn't
+// recognise is rejected. Limitations: only linear / repeating-linear (no radial/conic for
+// now); colors inside gradients must be hex or named (rgb() isn't supported because the
+// stop tokenizer is whitespace-based and rgb(r,g,b) contains commas).
+const DEG_RE = /^-?\d{1,3}deg$/i;
+// Position inside a gradient stop: "<n>%", "<n>px", or bare "0" (unitless zero is valid CSS).
+const POS_RE = /^(0|-?\d{1,4}(\.\d{1,3})?(%|px))$/;
+const SIDE_KEYWORDS = new Set([
+  "to top", "to right", "to bottom", "to left",
+  "to top right", "to top left", "to bottom right", "to bottom left",
+  "to right top", "to right bottom", "to left top", "to left bottom",
+]);
+
+// Depth-aware split: splits "a, b, c" but not "a, rgb(1,2,3), c" — keeps nested-paren
+// content together. (Currently only used to be safe; gradients here forbid rgb() stops.)
+function splitTopLevelCommas(s) {
+  const out = [];
+  let buf = "";
+  let depth = 0;
+  for (const c of s) {
+    if (c === "(") { depth++; buf += c; }
+    else if (c === ")") { depth--; buf += c; }
+    else if (c === "," && depth === 0) { out.push(buf); buf = ""; }
+    else { buf += c; }
+  }
+  if (buf.length) out.push(buf);
+  return out;
+}
+
+function isDirection(s) {
+  s = s.trim().toLowerCase();
+  return DEG_RE.test(s) || SIDE_KEYWORDS.has(s);
+}
+
+function isColorStop(s) {
+  // "<color> [<pos> [<pos>]]" — e.g. "red", "#fff 50%", "#000 0 30px"
+  const parts = s.trim().split(/\s+/);
+  if (parts.length < 1 || parts.length > 3) return false;
+  // rgb() colors aren't allowed inside gradient stops (the whitespace split breaks them).
+  if (parts[0].toLowerCase().startsWith("rgb(")) return false;
+  if (!isColor(parts[0])) return false;
+  for (let i = 1; i < parts.length; i++) if (!POS_RE.test(parts[i])) return false;
+  return true;
+}
+
+function isGradient(v) {
+  if (typeof v !== "string") return false;
+  const m = v.trim().match(/^(repeating-)?linear-gradient\((.+)\)$/i);
+  if (!m) return false;
+  const parts = splitTopLevelCommas(m[2]).map((p) => p.trim()).filter(Boolean);
+  if (parts.length < 2) return false; // need at least two color stops
+  // First token may be a direction or a stop; remaining tokens must all be stops.
+  const stopStart = isDirection(parts[0]) ? 1 : 0;
+  const stops = parts.slice(stopStart);
+  if (stops.length < 2 || stops.length > 6) return false;
+  return stops.every(isColorStop);
+}
+
 function safeSelector(s) {
   return typeof s === "string" && V.SAFE_SELECTOR.test(s) && !V.FORBIDDEN_SELECTORS.test(s);
 }
@@ -34,9 +93,16 @@ function isAllowedImageSrc(src) {
 
 function validateCssVar(name, value) {
   if (!V.CSS_VARS.includes(name)) return `unknown css var "${name}"`;
-  if (typeof value !== "string" || value.length > V.LIMITS.cssValue) return "bad css value";
+  if (typeof value !== "string") return "bad css value";
+  // --tz-bg gets the larger cap because gradients are longer than flat colors.
+  const cap = name === "--tz-bg" ? V.LIMITS.cssValueBg : V.LIMITS.cssValue;
+  if (value.length > cap) return "bad css value";
   if (name === "--tz-font") return V.FONTS.includes(value) ? null : "font not in allowlist";
   if (name === "--tz-radius" || name === "--tz-space") return LENGTH.test(value) ? null : "bad length value";
+  if (name === "--tz-bg") {
+    if (isColor(value) || isGradient(value)) return null;
+    return "bad color or gradient value";
+  }
   return isColor(value) ? null : "bad color value";
 }
 
