@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
   // Staging-mode short-circuit: return a canned approval + a benign patch, no Anthropic spend.
   if (stagingMode) {
     const fakePatch = { v: 1, ops: [{ op: "set_theme", theme: "dark" }] };
-    const { error } = await supa.from("live_patches").insert({ patch: fakePatch });
+    const { error } = await supa.from("live_patches").insert({ patch: fakePatch, prompt });
     if (error) return json(500, { error: "insert failed", detail: error.message });
     return json(200, { ok: true, staging: true, patch: fakePatch });
   }
@@ -120,8 +120,9 @@ Deno.serve(async (req) => {
     });
   }
 
-  // Insert: the broadcast trigger fans it out to every connected browser within a second.
-  const { error } = await supa.from("live_patches").insert({ patch });
+  // Insert: store prompt alongside the patch (M4 batching uses the prompt in the bake issue
+  // body). The broadcast trigger fans the patch out to every connected browser within a second.
+  const { error } = await supa.from("live_patches").insert({ patch, prompt });
   if (error) return json(500, { error: "insert failed", detail: error.message });
 
   return json(200, { ok: true, patch });
