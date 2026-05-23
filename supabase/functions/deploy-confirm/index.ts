@@ -16,21 +16,18 @@ Deno.serve(async (req) => {
   const SB_URL = Deno.env.get("SUPABASE_URL");
   if (!SB_SRK || !SB_URL) return json(500, { error: "config missing" });
 
-  // v1 auth: accept any bearer whose JWT payload has role=service_role. This makes the
-  // function tolerant of harmless mismatches between the auto-injected key and the GH-secret
-  // copy (a common copy-paste pitfall). M5 hardening replaces this with a signed check.
+  // M5 auth: verify HS256 JWT signature against SUPABASE_JWT_SECRET, then check role.
+  // This accepts ANY validly-signed service_role JWT for this project (so harmless copy
+  // differences between the auto-injected key and the GH-secret copy don't matter) while
+  // rejecting anything not actually signed by the project.
+  const SB_JWT_SECRET = Deno.env.get("SUPABASE_JWT_SECRET");
+  if (!SB_JWT_SECRET) return json(500, { error: "config missing (jwt secret)" });
   const auth = req.headers.get("authorization") ?? "";
   const m = auth.match(/^Bearer\s+(.+)$/i);
   if (!m) return json(401, { error: "unauthorized", reason: "no bearer" });
-  try {
-    const seg = m[1].trim().split(".")[1] ?? "";
-    const padded = seg + "==".slice((seg.length % 4) || 4);
-    const payload = JSON.parse(atob(padded.replace(/-/g, "+").replace(/_/g, "/")));
-    if (payload?.role !== "service_role") {
-      return json(401, { error: "unauthorized", reason: `role=${payload?.role}` });
-    }
-  } catch {
-    return json(401, { error: "unauthorized", reason: "bad jwt payload" });
+  const token = m[1].trim();
+  if (!(await verifyServiceRoleJWT(token, SB_JWT_SECRET))) {
+    return json(401, { error: "unauthorized" });
   }
 
   let body: { batch_id?: string; deploy_url?: string; deploy_id?: string };
@@ -75,4 +72,37 @@ function json(status: number, body: unknown): Response {
     status,
     headers: { "content-type": "application/json", ...corsHeaders },
   });
+}
+
+// HS256 JWT verification using the project's JWT secret. Returns true iff the signature is
+// valid AND the payload's role is service_role.
+async function verifyServiceRoleJWT(token: string, secret: string): Promise<boolean> {
+  const parts = token.split(".");
+  if (parts.length !== 3) return false;
+  const [h, p, s] = parts;
+  try {
+    const data = new TextEncoder().encode(`${h}.${p}`);
+    const key = await crypto.subtle.importKey(
+      "raw",
+      new TextEncoder().encode(secret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["verify"],
+    );
+    const sigBytes = b64urlToBytes(s);
+    const ok = await crypto.subtle.verify("HMAC", key, sigBytes, data);
+    if (!ok) return false;
+    const payload = JSON.parse(new TextDecoder().decode(b64urlToBytes(p)));
+    return payload?.role === "service_role";
+  } catch {
+    return false;
+  }
+}
+
+function b64urlToBytes(s: string): Uint8Array {
+  const padded = s.replace(/-/g, "+").replace(/_/g, "/") + "==".slice((s.length % 4) || 4);
+  const bin = atob(padded);
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return arr;
 }
