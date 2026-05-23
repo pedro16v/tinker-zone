@@ -25,6 +25,15 @@ jobs:
   trigger:
     runs-on: ubuntu-latest
     steps:
+      - name: Reap stuck batches first
+        env:
+          SB_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          curl -sS -X POST "$SB_URL/rest/v1/rpc/reap_stuck_batches" \
+            -H "apikey: $SB_KEY" -H "Authorization: Bearer $SB_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"p_max_age_hours": 2}'
+
       - name: Claim a batch from Supabase
         id: claim
         env:

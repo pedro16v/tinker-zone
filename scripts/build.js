@@ -20,6 +20,18 @@ async function main() {
   // 1. Canonical layer: copy /canvas -> /public
   await fs.cp(CANVAS, OUT, { recursive: true });
 
+  // 1b. Static protected pages (time machine, privacy notice) — siblings of canvas at
+  //     /public/history/ and /public/privacy/. Skipped if the directory doesn't exist yet.
+  for (const sub of ["history", "privacy"]) {
+    const src = path.join(ROOT, sub);
+    try {
+      await fs.access(src);
+      await fs.cp(src, path.join(OUT, sub), { recursive: true });
+    } catch {
+      /* dir missing — skip */
+    }
+  }
+
   // 2. Widget runtime: bundle the widget entry (and its imports, including @supabase/supabase-js)
   //    into a single self-contained ESM module at /public/__tz/widget.js. Bundling is required
   //    because supabase-js comes from node_modules, not from a flat-relative path.

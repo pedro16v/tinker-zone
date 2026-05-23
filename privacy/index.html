@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>tinker.zone — privacy</title>
+    <link rel="stylesheet" href="/privacy/privacy.css" />
+  </head>
+  <body>
+    <main>
+      <a class="back" href="/">&larr; tinker.zone</a>
+      <h1>privacy</h1>
+      <p>
+        tinker.zone is a public collaborative website that anyone can reshape by submitting a
+        short, natural-language description of a change. This notice describes exactly what
+        happens to what you type.
+      </p>
+
+      <h2>what we collect</h2>
+      <ul>
+        <li>
+          <strong>The prompt you submit.</strong> Stored in our database (Supabase, Tokyo).
+          Visible publicly in the
+          <a href="/history">time machine</a> after a bake.
+        </li>
+        <li>
+          <strong>A hashed form of your IP address.</strong> Used only to rate-limit
+          submissions (a SHA-256 hash; the original is not stored). Buckets reset as the
+          hourly window rolls over.
+        </li>
+        <li>
+          <strong>Nothing else.</strong> No accounts, no tracking cookies, no analytics, no
+          third-party trackers, no fingerprinting.
+        </li>
+      </ul>
+
+      <h2>what happens to your prompt</h2>
+      <ol>
+        <li>It's checked by a content-moderation model; unsafe content is rejected.</li>
+        <li>
+          If approved, a small declarative <em>patch</em> is generated and broadcast in real
+          time to everyone currently viewing the site.
+        </li>
+        <li>
+          Periodically, accumulated patches are <em>baked</em> into a permanent commit on the
+          public source repository and a new version of the site is deployed. Every prompt
+          that contributed to a bake appears in that bake's time-machine entry.
+        </li>
+      </ol>
+
+      <h2>where the data lives</h2>
+      <ul>
+        <li>
+          <strong>Source code</strong> (every version):
+          <a href="https://github.com/pedro16v/tinker-zone" target="_blank" rel="noopener">github.com/pedro16v/tinker-zone</a>, public.
+        </li>
+        <li><strong>Live + baked patches and prompts</strong>: Supabase, Tokyo region.</li>
+        <li>
+          <strong>The site itself</strong>: Vercel, with one immutable URL per bake (listed in
+          the time machine).
+        </li>
+      </ul>
+
+      <h2>what we never do</h2>
+      <ul>
+        <li>We don't collect names, emails, accounts, locations, or device info.</li>
+        <li>
+          We don't load any third-party trackers or analytics scripts. The site's strict
+          Content-Security-Policy would block them at the browser anyway.
+        </li>
+        <li>We don't share data with advertisers — there are none.</li>
+      </ul>
+
+      <h2>removing a submission</h2>
+      <p>
+        If you'd like a prompt or its baked effect removed, open an issue on the GitHub repo
+        or contact the maintainer there. Because every change is in public git history,
+        "removal" means a follow-up bake that undoes the previous one — the historical commit
+        remains in git but won't be the current site.
+      </p>
+
+      <h2>changes to this notice</h2>
+      <p>
+        If this notice changes, the change goes through the same public commit as everything
+        else. You can see the diff in git history.
+      </p>
+    </main>
+  </body>
+</html>

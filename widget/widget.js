@@ -87,8 +87,9 @@ import { initLiveLayer } from "./live-layer.js";
     .submit:hover { background: #8ad6ff; }
     .submit:disabled { opacity: .5; cursor: default; }
     .status { min-height: 16px; margin-top: 8px; font-size: 12px; color: #66ccff; }
-    .history { display: inline-block; margin-top: 6px; color: #9aa0aa; font-size: 12px; text-decoration: none; }
-    .history:hover { color: #e8eaed; text-decoration: underline; }
+    .links { margin: 6px 0 0; font-size: 12px; color: #6b7280; }
+    .links a { color: #9aa0aa; text-decoration: none; }
+    .links a:hover { color: #e8eaed; text-decoration: underline; }
   `;
   root.appendChild(style);
 
@@ -112,7 +113,7 @@ import { initLiveLayer } from "./live-layer.js";
           <button class="submit" type="button">Send</button>
         </div>
         <p class="status" role="status"></p>
-        <a class="history" href="/history">time machine &#8594;</a>
+        <p class="links"><a href="/history">time machine &#8594;</a> &middot; <a href="/privacy">privacy</a></p>
       </div>
     </section>
   `;
