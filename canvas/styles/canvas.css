@@ -4,7 +4,7 @@
    produce immediate visible effects when a patch is applied. */
 :root {
   --tz-bg: #ffc0cb;
-  --tz-fg: #5a4a52;
+  --tz-fg: #ff8c00;
   --tz-accent: #ff99b4;
   --tz-font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --tz-radius: 12px;
@@ -97,4 +97,16 @@ body {
   background: linear-gradient(to bottom, rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.08));
   border-bottom: 1px solid rgba(0, 0, 0, 0.2);
   z-index: 1000;
+}
+
+#capybara {
+  position: fixed;
+  bottom: -10%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 30vw;
+  max-width: 300px;
+  opacity: 0.4;
+  pointer-events: none;
+  z-index: 0;
 }
