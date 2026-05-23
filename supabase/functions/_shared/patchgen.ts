@@ -37,13 +37,23 @@ Op shapes:
          "Georgia, \\"Times New Roman\\", serif"
          "\\"Courier New\\", ui-monospace, monospace"
        Gradients (ONLY for --tz-bg, never for --tz-fg or --tz-accent):
-         "linear-gradient(<dir>, <stop>, <stop>[, ...up to 6])"
-         "repeating-linear-gradient(<dir>, <stop>, <stop>[, ...up to 6])"
+         EXACTLY ONE of:
+           "linear-gradient(<dir>, <stop>, <stop>[, ...up to 6])"
+           "repeating-linear-gradient(<dir>, <stop>, <stop>[, ...up to 6])"
          <dir> = "to top" | "to right" | "to bottom" | "to left" | "to top right" | "to bottom right" | "to top left" | "to bottom left" | "<n>deg"
          <stop> = "<color>" or "<color> <pos>" or "<color> <pos> <pos>" where <pos> is "<n>%" or "<n>px"
-         Colors inside gradients must be hex (#rgb / #rrggbb) or named (no rgb()).
-         A repeating-linear-gradient with two contrasting stops gives a stripe pattern.
-         A true 2D checkerboard isn't expressible — use diagonal stripes (repeating-linear-gradient at 45deg) as the closest approximation.
+         <color> inside a stop is a SINGLE color literal: hex ("#rgb"/"#rrggbb") or a named color. NEVER rgb(), NEVER another gradient.
+         HARD RULES — break them and the patch is rejected:
+           - NEVER nest a gradient inside another gradient (e.g. linear-gradient(..., repeating-linear-gradient(...), ...) is invalid — a "stop" is a single color, not a pattern).
+           - NEVER combine gradients with commas at the top level (e.g. "linear-gradient(...), linear-gradient(...)" is invalid — only ONE gradient function per value).
+           - NEVER use radial-gradient, conic-gradient, or any image url() — they are not supported.
+         Stripes (1D) are easy: a repeating-linear-gradient with two color stops gives parallel stripes.
+         A true 2D checkerboard CANNOT be expressed in this vocabulary. If asked for "checker", "checkered", "checkerboard", "grid", or "tiled": emit a diagonal-stripes pattern that covers the WHOLE background (not half), as the closest approximation. Do not try to combine layers.
+         PATTERNS CANNOT BE PARTIAL-AREA. If a request combines a pattern (checker/stripes/grid) with a partial-area constraint ("top half checkered", "50% striped", "the top is checkered"), you MUST drop the partial-area part and emit the FULL-coverage pattern. Solid-color partial-area is fine (linear-gradient with stop positions); pattern partial-area is impossible.
+         Concrete WRONG outputs that have been generated and rejected (do NOT emit anything like these):
+           WRONG: linear-gradient(to bottom, repeating-linear-gradient(45deg, #000 0 30px, #fff 30px 60px) 0 50%, #fff 50% 100%)   — gradient nested in gradient (a stop is a color, not a pattern)
+           WRONG: linear-gradient(45deg, #000 0 30px, #fff 30px 60px 0 50%, #fff 50% 100%)                                       — stops cannot have more than 2 positions; mashing two patterns into one stop list
+           WRONG: linear-gradient(to bottom, red 50%, blue 50%), linear-gradient(to right, green, yellow)                          — multiple top-level gradients separated by commas
   2) set_text     { "op":"set_text", "target":<safe selector>, "value":<≤ 280> }
   3) set_theme    { "op":"set_theme", "theme":<one of light/dark/sunset/terminal/pastel> }
        Each theme is a bundle of --tz-bg/--tz-fg/--tz-accent values.
@@ -112,6 +122,32 @@ output: {"v":1,"ops":[{"op":"set_css_var","name":"--tz-bg","value":"linear-gradi
 
 Output ONLY the JSON object.`;
 
+// Walk the string and return the first BALANCED top-level {...} block, honoring strings &
+// escapes. Lets us recover when the model emits a primary patch plus a stray second object
+// or trailing commentary — a greedy /\{[\s\S]*\}/ would conflate the two and fail JSON.parse.
+function extractFirstJsonObject(s: string): string | null {
+  let depth = 0;
+  let start = -1;
+  let inString = false;
+  let escape = false;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (escape) { escape = false; continue; }
+    if (inString) {
+      if (c === "\\") escape = true;
+      else if (c === '"') inString = false;
+      continue;
+    }
+    if (c === '"') { inString = true; continue; }
+    if (c === "{") { if (depth === 0) start = i; depth++; }
+    else if (c === "}") {
+      depth--;
+      if (depth === 0 && start >= 0) return s.slice(start, i + 1);
+    }
+  }
+  return null;
+}
+
 export async function patchgen(apiKey: string, prompt: string): Promise<unknown> {
   const { text } = await anthropic({
     apiKey,
@@ -125,8 +161,14 @@ export async function patchgen(apiKey: string, prompt: string): Promise<unknown>
   try {
     return JSON.parse(s);
   } catch {
-    const m = s.match(/\{[\s\S]*\}/);
-    if (m) return JSON.parse(m[0]);
+    const first = extractFirstJsonObject(s);
+    if (first) {
+      try {
+        return JSON.parse(first);
+      } catch {
+        // fall through to throw below
+      }
+    }
     throw new Error("patchgen: model output is not valid JSON");
   }
 }

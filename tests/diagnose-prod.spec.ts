@@ -83,7 +83,7 @@ test("diagnose prod live-layer + catch-up", async ({ page, request }) => {
   console.log("=== INITIAL STATE on load:", JSON.stringify(initial, null, 2));
 
   // ---- 3. submit a natural prompt that should clearly bind: change --tz-fg ----
-  const probe = `make all the text on the page bright orange`;
+  const probe = process.env.PROBE_PROMPT || `make all the text on the page bright orange`;
   console.log(`=== submitting: ${probe}`);
   const submitRes = await request.post(`${SBF}/submit`, {
     headers: { ...HDR, "content-type": "application/json" },
@@ -97,7 +97,9 @@ test("diagnose prod live-layer + catch-up", async ({ page, request }) => {
 
   const afterSubmit = await page.evaluate(() => ({
     bodyColor: getComputedStyle(document.body).color,
+    bodyBg: getComputedStyle(document.body).background.slice(0, 200),
     cssFgVar: getComputedStyle(document.documentElement).getPropertyValue("--tz-fg").trim(),
+    cssBgVar: getComputedStyle(document.documentElement).getPropertyValue("--tz-bg").trim(),
     tagline: document.getElementById("canvas-tagline")?.textContent ?? null,
   }));
   console.log("=== STATE after submit + 5s:", JSON.stringify(afterSubmit, null, 2));
@@ -111,7 +113,9 @@ test("diagnose prod live-layer + catch-up", async ({ page, request }) => {
 
   const afterReload = await page.evaluate(() => ({
     bodyColor: getComputedStyle(document.body).color,
+    bodyBg: getComputedStyle(document.body).background.slice(0, 200),
     cssFgVar: getComputedStyle(document.documentElement).getPropertyValue("--tz-fg").trim(),
+    cssBgVar: getComputedStyle(document.documentElement).getPropertyValue("--tz-bg").trim(),
     tagline: document.getElementById("canvas-tagline")?.textContent ?? null,
   }));
   console.log("=== STATE after reload:", JSON.stringify(afterReload, null, 2));

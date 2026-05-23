@@ -145,6 +145,10 @@ Deno.serve(async (req) => {
       ok: false,
       reason: "patch rejected by validator",
       errors: v.errors,
+      // Surface the rejected patch back to the submitter so they (and we) can see what the
+      // model emitted. It's the LLM's output, not executed, only visible to this caller —
+      // useful diagnostic, not a leak.
+      patch,
     });
   }
 
