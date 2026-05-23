@@ -138,11 +138,44 @@ import { initLiveLayer } from "./live-layer.js";
   const updateCount = () => { count.textContent = `${prompt.value.length}/500`; };
   prompt.addEventListener("input", updateCount);
 
-  // ---- submit (M1 placeholder; M3 wires this to /submit) ----
-  submit.addEventListener("click", () => {
+  // ---- submit: POST to the /submit Edge function (M3) ----
+  submit.addEventListener("click", async () => {
     const text = prompt.value.trim();
     if (!text) { status.textContent = "Type something first."; return; }
-    status.textContent = "Submissions open soon ✨";
+    const cfg = window.TZ_CONFIG;
+    if (!cfg || !cfg.supabaseUrl) { status.textContent = "Not configured."; return; }
+    submit.disabled = true;
+    status.textContent = "Sending…";
+    try {
+      const res = await fetch(`${cfg.supabaseUrl}/functions/v1/submit`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "apikey": cfg.supabaseAnonKey,
+          "authorization": `Bearer ${cfg.supabaseAnonKey}`,
+        },
+        body: JSON.stringify({ prompt: text }),
+      });
+      let data = {};
+      try { data = await res.json(); } catch {}
+      if (res.ok && data.ok) {
+        status.textContent = "Live! ✨";
+        prompt.value = "";
+        updateCount();
+      } else if (res.status === 429) {
+        status.textContent = "Slow down — try again in a bit.";
+      } else if (res.status === 503) {
+        status.textContent = "Submissions paused.";
+      } else if (data && data.reason) {
+        status.textContent = data.reason;
+      } else {
+        status.textContent = "Couldn't apply that — try a different phrasing.";
+      }
+    } catch {
+      status.textContent = "Network error.";
+    } finally {
+      submit.disabled = false;
+    }
   });
 
   // ---- drag (pointer events; persist position) ----
