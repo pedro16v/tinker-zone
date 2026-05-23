@@ -48,6 +48,9 @@ jobs:
           base_branch: main
           label_trigger: bake
           branch_prefix: bake/
+          # The bake-trigger workflow's App creates the issue, so the action sees a bot actor.
+          # Allow it (with branch protection + the diff-scope gate as the real safety wall).
+          allowed_bots: "*"
           claude_args: >-
             --model claude-haiku-4-5
             --allowedTools "Edit,Read,Write,Bash(npm run build),Bash(npm run scan)"
