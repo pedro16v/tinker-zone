@@ -5,10 +5,15 @@
 // script, covered by `script-src 'self'` in the edge CSP — no inline-hash juggling needed.
 
 export function injectWidget(html) {
-  const tag = '<script type="module" src="/__tz/widget.js"></script>';
-  if (html.includes('/__tz/widget.js')) return html; // idempotent
-  if (html.includes('</body>')) {
-    return html.replace('</body>', `    ${tag}\n  </body>`);
+  // Two tags: a classic config script (sets window.TZ_CONFIG synchronously) followed by the
+  // widget module (which reads TZ_CONFIG and connects to Supabase Realtime).
+  const tags = [
+    '<script src="/__tz/config.js"></script>',
+    '<script type="module" src="/__tz/widget.js"></script>',
+  ].join("\n    ");
+  if (html.includes("/__tz/widget.js")) return html; // idempotent
+  if (html.includes("</body>")) {
+    return html.replace("</body>", `    ${tags}\n  </body>`);
   }
-  return `${html}\n${tag}\n`;
+  return `${html}\n${tags}\n`;
 }

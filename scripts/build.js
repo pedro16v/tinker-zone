@@ -1,10 +1,11 @@
 // Build pipeline: /canvas (canonical source) + /widget (injected runtime) -> /public.
 //
-// The widget is COPIED IN at build time, never read from the editable canvas. That is the
+// The widget is bundled in at build time, never read from the editable canvas. That is the
 // architectural reason the automation physically cannot remove it.
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import * as esbuild from "esbuild";
 import { injectWidget } from "./inject-widget.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -19,14 +20,31 @@ async function main() {
   // 1. Canonical layer: copy /canvas -> /public
   await fs.cp(CANVAS, OUT, { recursive: true });
 
-  // 2. Widget runtime: emit every /widget/*.js module to /public/__tz/ (flat layout, so the
-  //    modules' relative "./" imports resolve identically in source and in the deployed bundle).
+  // 2. Widget runtime: bundle the widget entry (and its imports, including @supabase/supabase-js)
+  //    into a single self-contained ESM module at /public/__tz/widget.js. Bundling is required
+  //    because supabase-js comes from node_modules, not from a flat-relative path.
   await fs.mkdir(path.join(OUT, "__tz"), { recursive: true });
-  for (const f of (await fs.readdir(WIDGET)).filter((n) => n.endsWith(".js"))) {
-    await fs.copyFile(path.join(WIDGET, f), path.join(OUT, "__tz", f));
-  }
+  await esbuild.build({
+    entryPoints: [path.join(WIDGET, "widget.js")],
+    bundle: true,
+    format: "esm",
+    outfile: path.join(OUT, "__tz", "widget.js"),
+    target: "es2020",
+    legalComments: "none",
+    logLevel: "warning",
+  });
 
-  // 3. Inject the widget bootstrap into index.html
+  // 3. Emit runtime config (Supabase URL + anon key + Realtime topic) from
+  //    shared/runtime-config.json as a classic script that runs BEFORE the widget module and
+  //    sets window.TZ_CONFIG. The values are PUBLIC by design: the anon key is RLS-bound and
+  //    intended for client use.
+  const cfg = JSON.parse(await fs.readFile(path.join(ROOT, "shared", "runtime-config.json"), "utf8"));
+  await fs.writeFile(
+    path.join(OUT, "__tz", "config.js"),
+    `window.TZ_CONFIG = ${JSON.stringify(cfg, null, 2)};\n`,
+  );
+
+  // 4. Inject the config + widget bootstrap into index.html
   const indexPath = path.join(OUT, "index.html");
   try {
     await fs.access(indexPath);
