@@ -9,6 +9,15 @@ import { createClient } from "@supabase/supabase-js";
 import { applyPatch, resetLive } from "./patch-applier.js";
 
 export function initLiveLayer(config = {}) {
+  // Dedup by seq so the catch-up fetch and an in-flight Realtime broadcast can't apply the
+  // same patch twice (add_element would otherwise duplicate). Cleared on reset/reload.
+  const seen = new Set();
+  function applyOnce(seq, patch) {
+    if (seq != null && seen.has(seq)) return;
+    if (seq != null) seen.add(seq);
+    applyPatch(patch);
+  }
+
   const api = {
     apply: (patch) => applyPatch(patch),
     reset: () => resetLive(),
@@ -37,14 +46,31 @@ export function initLiveLayer(config = {}) {
   channel
     .on("broadcast", { event: "patch" }, ({ payload }) => {
       // payload is the jsonb passed to realtime.send(): { type, seq, patch, id }
-      if (payload && payload.patch) applyPatch(payload.patch);
+      if (payload && payload.patch) applyOnce(payload.seq, payload.patch);
     })
     .on("broadcast", { event: "reset" }, () => {
-      // M4 will fire this after a successful bake deploy so browsers reload the new canonical
-      // and drop their now-baked ephemeral patches.
+      // M4: a bake just deployed. Reload so the page picks up the new canonical and drops
+      // any ephemeral patches that are now baked in.
       location.reload();
     })
     .subscribe();
+
+  // Catch-up: replay every un-baked live patch in order. This is what makes a refresh keep
+  // the live state — without it, a browser only sees patches that arrive AFTER subscribe().
+  (async () => {
+    try {
+      const { data, error } = await supabase
+        .from("live_patches")
+        .select("seq, patch")
+        .eq("status", "live")
+        .order("seq", { ascending: true })
+        .limit(200);
+      if (error) return;
+      for (const row of data ?? []) applyOnce(row.seq, row.patch);
+    } catch {
+      /* catch-up is best-effort; the page is still usable without it */
+    }
+  })();
 
   api.supabase = supabase;
   api.channel = channel;
