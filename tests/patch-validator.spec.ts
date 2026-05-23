@@ -9,7 +9,7 @@ const VALID = [
   { v: 1, ops: [{ op: "set_css_var", name: "--tz-radius", value: "20px" }] },
   { v: 1, ops: [{ op: "set_text", target: "#canvas-title", value: "hello world" }] },
   { v: 1, ops: [{ op: "add_element", kind: "paragraph", container: "#canvas-root", text: "hi", class: "tz-muted" }] },
-  { v: 1, ops: [{ op: "add_element", kind: "image", container: "#canvas-root", src: "/assets/pic.png" }] },
+  { v: 1, ops: [{ op: "add_element", kind: "emoji-badge", container: "#canvas-root", text: "🦫" }] },
   { v: 1, ops: [{ op: "set_attr", target: ".thing", attr: "aria-label", value: "x" }] },
 ];
 
@@ -22,8 +22,7 @@ const INVALID = [
   { v: 1, ops: [{ op: "set_text", target: "#tz-host", value: "x" }] }, // widget host
   { v: 1, ops: [{ op: "set_text", target: "div > script", value: "x" }] }, // unsafe selector
   { v: 1, ops: [{ op: "add_element", kind: "iframe", container: "#x" }] }, // bad kind
-  { v: 1, ops: [{ op: "add_element", kind: "image", container: "#x", src: "https://evil.tld/a.png" }] }, // bad host
-  { v: 1, ops: [{ op: "add_element", kind: "image", container: "#x", src: "data:image/png;base64,AAAA" }] }, // data: blocked
+  { v: 1, ops: [{ op: "add_element", kind: "image", container: "#x" }] }, // image removed from vocab
   { v: 1, ops: [{ op: "set_attr", target: ".x", attr: "onclick", value: "alert(1)" }] }, // bad attr
   { v: 1, ops: [{ op: "set_attr", target: ".x", attr: "class", value: "evil" }] }, // class not in palette
   { v: 1, ops: [{ op: "set_text", target: "#a", value: "x", extra: 1 }] }, // unexpected key

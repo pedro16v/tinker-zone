@@ -41,11 +41,10 @@
           "type": "object", "additionalProperties": false, "required": ["op", "kind", "container"],
           "properties": {
             "op": { "const": "add_element" },
-            "kind": { "enum": ["heading", "paragraph", "button-noop", "divider", "image", "emoji-badge"] },
+            "kind": { "enum": ["heading", "paragraph", "button-noop", "divider", "emoji-badge"] },
             "container": { "$ref": "#/$defs/safeSelector" },
             "text": { "type": "string", "maxLength": 280 },
-            "class": { "enum": ["tz-card", "tz-hero", "tz-muted", "tz-pill"] },
-            "src": { "type": "string", "maxLength": 300 }
+            "class": { "enum": ["tz-card", "tz-hero", "tz-muted", "tz-pill"] }
           }
         },
         {

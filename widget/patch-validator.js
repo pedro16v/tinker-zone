@@ -59,12 +59,11 @@ function validateOp(op) {
       if (!hasOnlyKeys(op, ["op", "theme"])) return "set_theme: unexpected keys";
       return Object.prototype.hasOwnProperty.call(V.THEMES, op.theme) ? null : "set_theme: unknown theme";
     case "add_element":
-      if (!hasOnlyKeys(op, ["op", "kind", "container", "text", "class", "src"])) return "add_element: unexpected keys";
+      if (!hasOnlyKeys(op, ["op", "kind", "container", "text", "class"])) return "add_element: unexpected keys";
       if (!V.PALETTE_KINDS.includes(op.kind)) return "add_element: kind not in palette";
       if (!safeSelector(op.container)) return "add_element: unsafe container";
       if (op.text != null && (typeof op.text !== "string" || op.text.length > V.LIMITS.text)) return "add_element: bad text";
       if (op.class != null && !V.PALETTE_CLASSES.includes(op.class)) return "add_element: class not in palette";
-      if (op.kind === "image" && !isAllowedImageSrc(op.src)) return "add_element: image src not allowed";
       return null;
     case "set_attr":
       if (!hasOnlyKeys(op, ["op", "target", "attr", "value"])) return "set_attr: unexpected keys";

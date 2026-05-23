@@ -79,6 +79,12 @@ output: {"v":1,"ops":[{"op":"set_text","target":"#canvas-tagline","value":"shape
 input: sunset background, big yellow text
 output: {"v":1,"ops":[{"op":"set_theme","theme":"sunset"},{"op":"set_css_var","name":"--tz-fg","value":"#ffe600"}]}
 
+input: a capybara floating in the background
+output: {"v":1,"ops":[{"op":"add_element","kind":"emoji-badge","container":"#canvas-root","text":"🦫","class":"tz-pill"}]}
+
+input: a tiny cat in the corner
+output: {"v":1,"ops":[{"op":"add_element","kind":"emoji-badge","container":"#canvas-root","text":"🐈"}]}
+
 Output ONLY the JSON object.`;
 
 export async function patchgen(apiKey: string, prompt: string): Promise<unknown> {

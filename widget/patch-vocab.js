@@ -26,7 +26,10 @@ export const THEMES = {
   pastel: { "--tz-bg": "#fdf2f8", "--tz-fg": "#3a2e3f", "--tz-accent": "#d57fb0" },
 };
 
-export const PALETTE_KINDS = ["heading", "paragraph", "button-noop", "divider", "image", "emoji-badge"];
+// Note: `image` was removed in M5+ — without a curated image library, every add_element
+// with kind=image was a broken image (404 on a same-origin path the bake never placed).
+// "Image-y" prompts now map to emoji-badge in patch-gen.
+export const PALETTE_KINDS = ["heading", "paragraph", "button-noop", "divider", "emoji-badge"];
 export const PALETTE_CLASSES = ["tz-card", "tz-hero", "tz-muted", "tz-pill"];
 export const ATTR_ALLOWLIST = ["class", "alt", "aria-label", "title"];
 

@@ -40,11 +40,6 @@ function buildNode(op) {
       el = document.createElement("span");
       el.textContent = op.text || "✨";
       break;
-    case "image":
-      el = document.createElement("img");
-      el.src = op.src;
-      el.alt = op.text || "";
-      break;
     default:
       return null;
   }
