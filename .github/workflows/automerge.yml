@@ -11,8 +11,7 @@ on:
     types: [opened, reopened, labeled]
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 jobs:
   enable:
@@ -21,8 +20,17 @@ jobs:
       endsWith(github.event.pull_request.user.login, '[bot]')
     runs-on: ubuntu-latest
     steps:
+      # Use the scoped App token (NOT the default GITHUB_TOKEN), so the eventual merge push
+      # is treated as a third-party action and DOES trigger downstream workflows (deploy.yml).
+      - name: Mint scoped App token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+
       - name: Enable auto-merge (squash)
         run: gh pr merge --auto --squash "${{ github.event.pull_request.number }}"
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
           GH_REPO: ${{ github.repository }}
