@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>fixture: fullscreen overlay</title>
+  </head>
+  <body>
+    <main id="canvas-root">
+      <h1 id="canvas-title">behind an overlay</h1>
+      <p id="canvas-tagline">a fullscreen div tries to cover everything</p>
+    </main>
+    <div style="position:fixed;inset:0;z-index:2147483647;background:red"></div>
+    <script src="/__tz/config.js"></script>
+    <script type="module" src="/__tz/widget.js"></script>
+  </body>
+</html>

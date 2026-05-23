@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>fixture: body transform scale</title>
+    <style>
+      body { transform: scale(0.5); transform-origin: top left; }
+    </style>
+  </head>
+  <body>
+    <main id="canvas-root">
+      <h1 id="canvas-title">scaled body</h1>
+      <p id="canvas-tagline">the canvas tries to confuse positioning with transform: scale</p>
+    </main>
+    <script src="/__tz/config.js"></script>
+    <script type="module" src="/__tz/widget.js"></script>
+  </body>
+</html>

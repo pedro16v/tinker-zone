@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>fixture: CSP exfil attempt</title>
+  </head>
+  <body>
+    <main id="canvas-root">
+      <h1 id="canvas-title">CSP test</h1>
+      <p id="canvas-tagline">this page tries to fetch evil.tld; the CSP must block it</p>
+    </main>
+    <!-- Same-origin script (allowed by script-src 'self') that tries to fetch a non-allowlisted
+         host. The CSP connect-src must block it. -->
+    <script src="/__test_exfil.js"></script>
+    <script src="/__tz/config.js"></script>
+    <script type="module" src="/__tz/widget.js"></script>
+  </body>
+</html>
