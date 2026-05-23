@@ -7,6 +7,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { sendDeployEmail } from "../_shared/email.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -62,7 +63,56 @@ Deno.serve(async (req) => {
   const { error: rErr } = await supa.rpc("tz_broadcast_reset", { p_deploy_id: deployId });
   if (rErr) return json(500, { error: "broadcast failed", detail: rErr.message });
 
-  return json(200, { ok: true, batch_id: batchId, deploy_id: deployId });
+  // M6: notify each submitter who left an email, then delete their address. No-op when
+  // RESEND_API_KEY isn't set in the function env.
+  const RESEND_KEY = Deno.env.get("RESEND_API_KEY");
+  const RESEND_FROM = Deno.env.get("RESEND_FROM");  // e.g. "tinker.zone <hi@your-domain.com>"
+  let notified = 0;
+  if (RESEND_KEY && deployUrl) {
+    try {
+      const { data: patches } = await supa
+        .from("live_patches")
+        .select("id, prompt")
+        .eq("batch_id", batchId);
+      const ids = (patches ?? []).map((p) => p.id);
+      const promptById = new Map((patches ?? []).map((p) => [p.id, p.prompt as string | null]));
+      if (ids.length) {
+        const { data: rows } = await supa
+          .from("notification_emails")
+          .select("id, email, live_patch_id")
+          .in("live_patch_id", ids)
+          .is("sent_at", null);
+        const grouped = new Map<string, { ids: string[]; prompts: string[] }>();
+        for (const r of rows ?? []) {
+          const entry = grouped.get(r.email) ?? { ids: [], prompts: [] };
+          entry.ids.push(r.id);
+          const p = promptById.get(r.live_patch_id);
+          if (p) entry.prompts.push(p);
+          grouped.set(r.email, entry);
+        }
+        for (const [recipient, entry] of grouped) {
+          const r = await sendDeployEmail({
+            apiKey: RESEND_KEY,
+            to: recipient,
+            from: RESEND_FROM,
+            prompts: entry.prompts.length ? entry.prompts : ["(your submission)"],
+            deployUrl,
+          });
+          if (r.ok) {
+            // Privacy: delete the address rows once the email has gone out.
+            await supa.from("notification_emails").delete().in("id", entry.ids);
+            notified++;
+          } else {
+            console.warn("email send failed:", recipient, r.status, r.detail);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("notification step error:", String(e).slice(0, 240));
+    }
+  }
+
+  return json(200, { ok: true, batch_id: batchId, deploy_id: deployId, notified });
 });
 
 function json(status: number, body: unknown): Response {

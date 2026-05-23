@@ -11,6 +11,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { moderate } from "../_shared/moderation.ts";
 import { patchgen } from "../_shared/patchgen.ts";
+import { verifyTurnstile } from "../_shared/turnstile.ts";
 // The shared validator (single source of truth, also used by the browser).
 import { validatePatch } from "../../../widget/patch-validator.js";
 
@@ -34,7 +35,7 @@ Deno.serve(async (req) => {
     return json(500, { error: "config missing", detail: "function env not set" });
   }
 
-  let body: { prompt?: unknown };
+  let body: { prompt?: unknown; email?: unknown; turnstile_token?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -43,6 +44,16 @@ Deno.serve(async (req) => {
   const prompt = String(body.prompt ?? "").trim();
   if (!prompt) return json(400, { error: "empty prompt" });
   if (prompt.length > 500) return json(400, { error: "prompt too long (max 500)" });
+
+  // Optional email. Basic format check; the strict validation happens at the SMTP level.
+  let email: string | null = null;
+  const emailRaw = String(body.email ?? "").trim();
+  if (emailRaw) {
+    if (emailRaw.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailRaw)) {
+      return json(400, { error: "bad email" });
+    }
+    email = emailRaw;
+  }
 
   const supa = createClient(SB_URL, SB_SRK, { auth: { persistSession: false } });
 
@@ -57,7 +68,24 @@ Deno.serve(async (req) => {
   }
   const stagingMode = ctrl?.staging_mode === true;
 
-  // Per-IP rate limit (5 submissions / hour). Supabase's edge may set any of these headers;
+  // If Turnstile is configured (TURNSTILE_SECRET_KEY set), require a verified token. When
+  // not configured we accept submissions without a token (v1 / pre-public).
+  const TURNSTILE_SECRET = Deno.env.get("TURNSTILE_SECRET_KEY");
+  if (TURNSTILE_SECRET) {
+    const token = String(body.turnstile_token ?? "");
+    if (!token) {
+      return json(400, { ok: false, reason: "bot check token required" });
+    }
+    const ipForTs = (req.headers.get("cf-connecting-ip") ||
+      req.headers.get("x-real-ip") ||
+      (req.headers.get("x-forwarded-for") || "").split(",")[0].trim());
+    const tv = await verifyTurnstile(token, TURNSTILE_SECRET, ipForTs || undefined);
+    if (!tv.ok) {
+      return json(403, { ok: false, reason: `bot check failed${tv.reason ? ": " + tv.reason : ""}` });
+    }
+  }
+
+  // Per-IP rate limit (50 / hour). Supabase's edge may set any of these headers;
   // try them in order, falling back to "unknown" only as a last resort.
   const ip = (
     req.headers.get("cf-connecting-ip") ||
@@ -122,8 +150,21 @@ Deno.serve(async (req) => {
 
   // Insert: store prompt alongside the patch (M4 batching uses the prompt in the bake issue
   // body). The broadcast trigger fans the patch out to every connected browser within a second.
-  const { error } = await supa.from("live_patches").insert({ patch, prompt });
+  const { data: inserted, error } = await supa
+    .from("live_patches")
+    .insert({ patch, prompt })
+    .select("id")
+    .single();
   if (error) return json(500, { error: "insert failed", detail: error.message });
+
+  // If the user gave an email, store it in a separate table (not anon-readable) so we can
+  // notify them when the patch bakes.
+  if (email && inserted?.id) {
+    const { error: eErr } = await supa
+      .from("notification_emails")
+      .insert({ live_patch_id: inserted.id, email });
+    if (eErr) console.warn("notification_emails insert failed:", eErr.message);
+  }
 
   return json(200, { ok: true, patch });
 });

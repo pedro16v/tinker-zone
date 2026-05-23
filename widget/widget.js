@@ -73,11 +73,21 @@ import { initLiveLayer } from "./live-layer.js";
     .bar .close { background: none; border: 0; color: #9aa0aa; font-size: 18px; cursor: pointer; line-height: 1; }
     .body { padding: 12px; }
     .hint { color: #9aa0aa; font-size: 12px; margin-bottom: 8px; }
-    textarea {
+    textarea, input[type="email"] {
       width: 100%; resize: none; background: #0f1115; color: #e8eaed;
       border: 1px solid #2c313a; border-radius: 10px; padding: 10px; font: inherit;
     }
-    textarea:focus { outline: 2px solid #66ccff55; border-color: #66ccff; }
+    textarea:focus, input[type="email"]:focus { outline: 2px solid #66ccff55; border-color: #66ccff; }
+    .email-row { margin-top: 8px; position: relative; }
+    .email-row[hidden] { display: none; }
+    .email-row .email { padding-right: 28px; font-size: 13px; }
+    .email-dismiss {
+      position: absolute; top: 6px; right: 8px;
+      background: none; border: 0; color: #6b7280; font-size: 16px;
+      cursor: pointer; line-height: 1; padding: 4px;
+    }
+    .email-dismiss:hover { color: #e8eaed; }
+    .email-note { display: block; color: #6b7280; font-size: 11px; margin-top: 4px; }
     .row { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
     .count { color: #6b7280; font-size: 12px; font-variant-numeric: tabular-nums; }
     .submit {
@@ -108,6 +118,11 @@ import { initLiveLayer } from "./live-layer.js";
       <div class="body">
         <p class="hint">Describe a change to this page.</p>
         <textarea class="prompt" rows="3" maxlength="500" placeholder="make the background sunset orange&#8230;"></textarea>
+        <div class="email-row">
+          <input class="email" type="email" placeholder="email me when it ships (optional)" maxlength="254" />
+          <button class="email-dismiss" type="button" aria-label="hide email field">&times;</button>
+          <small class="email-note">no spam &mdash; one email when your change goes live, then deleted.</small>
+        </div>
         <div class="row">
           <span class="count">0/500</span>
           <button class="submit" type="button">Send</button>
@@ -128,6 +143,18 @@ import { initLiveLayer } from "./live-layer.js";
   const count = $(".count");
   const submit = $(".submit");
   const status = $(".status");
+  const emailRow = $(".email-row");
+  const emailInput = $(".email");
+  const emailDismiss = $(".email-dismiss");
+
+  // Persist email-row dismissal across this session so it doesn't keep coming back.
+  try {
+    if (sessionStorage.getItem("tz.email.dismissed") === "1") emailRow.hidden = true;
+  } catch {}
+  emailDismiss.addEventListener("click", () => {
+    emailRow.hidden = true;
+    try { sessionStorage.setItem("tz.email.dismissed", "1"); } catch {}
+  });
 
   // ---- open / close ----
   function open() { panel.hidden = false; launcher.style.display = "none"; prompt.focus(); }
@@ -145,6 +172,7 @@ import { initLiveLayer } from "./live-layer.js";
     if (!text) { status.textContent = "Type something first."; return; }
     const cfg = window.TZ_CONFIG;
     if (!cfg || !cfg.supabaseUrl) { status.textContent = "Not configured."; return; }
+    const email = (!emailRow.hidden && emailInput.value.trim()) || null;
     submit.disabled = true;
     status.textContent = "Sending…";
     try {
@@ -155,13 +183,14 @@ import { initLiveLayer } from "./live-layer.js";
           "apikey": cfg.supabaseAnonKey,
           "authorization": `Bearer ${cfg.supabaseAnonKey}`,
         },
-        body: JSON.stringify({ prompt: text }),
+        body: JSON.stringify({ prompt: text, email }),
       });
       let data = {};
       try { data = await res.json(); } catch {}
       if (res.ok && data.ok) {
-        status.textContent = "Live! ✨";
+        status.textContent = email ? "Live! ✨ — we'll email when it ships." : "Live! ✨";
         prompt.value = "";
+        emailInput.value = "";
         updateCount();
       } else if (res.status === 429) {
         status.textContent = "Slow down — try again in a bit.";
