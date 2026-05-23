@@ -1,0 +1,14 @@
+<svg viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- Body -->
+  <ellipse cx="100" cy="70" rx="70" ry="45" fill="#8b7355" opacity="0.3"/>
+  <!-- Head -->
+  <ellipse cx="100" cy="45" rx="45" ry="40" fill="#8b7355" opacity="0.3"/>
+  <!-- Ears -->
+  <ellipse cx="75" cy="20" rx="12" ry="18" fill="#8b7355" opacity="0.3"/>
+  <ellipse cx="125" cy="20" rx="12" ry="18" fill="#8b7355" opacity="0.3"/>
+  <!-- Eye -->
+  <circle cx="90" cy="40" r="4" fill="#5a4a52" opacity="0.4"/>
+  <circle cx="110" cy="40" r="4" fill="#5a4a52" opacity="0.4"/>
+  <!-- Snout -->
+  <ellipse cx="100" cy="55" rx="20" ry="15" fill="#8b7355" opacity="0.25"/>
+</svg>
