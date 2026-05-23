@@ -16,6 +16,15 @@ import { validatePatch } from "../../../widget/patch-validator.js";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  // Diagnostic: dump request headers (opt-in via x-debug:headers). Lets us see what
+  // Supabase's edge actually sets, e.g. for client-IP detection.
+  if (req.headers.get("x-debug") === "headers") {
+    const hs: Record<string, string> = {};
+    for (const [k, v] of req.headers.entries()) hs[k] = v;
+    return json(200, { headers: hs });
+  }
+
   if (req.method !== "POST") return json(405, { error: "method not allowed" });
 
   const ANTHROPIC = Deno.env.get("ANTHROPIC_API_KEY");
@@ -48,16 +57,26 @@ Deno.serve(async (req) => {
   }
   const stagingMode = ctrl?.staging_mode === true;
 
-  // Per-IP rate limit (5 submissions / hour). The function raises on overflow.
-  const ip = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || "unknown";
+  // Per-IP rate limit (5 submissions / hour). Supabase's edge may set any of these headers;
+  // try them in order, falling back to "unknown" only as a last resort.
+  const ip = (
+    req.headers.get("cf-connecting-ip") ||
+    req.headers.get("x-real-ip") ||
+    (req.headers.get("x-forwarded-for") || "").split(",")[0].trim() ||
+    "unknown"
+  );
   const ipHash = await sha256(ip);
   const { error: rlErr } = await supa.rpc("rate_check", {
     p_key: `submit:${ipHash}`,
-    p_limit: 5,
+    p_limit: 50, // generous for v1; M5 hardening tunes per-IP + per-domain windows
     p_window_seconds: 3600,
   });
   if (rlErr) {
-    return json(429, { ok: false, reason: "slow down — try again in a bit" });
+    return json(429, {
+      ok: false,
+      reason: "slow down — try again in a bit",
+      detail: { ip_detected: ip !== "unknown", hash_prefix: ipHash.slice(0, 8) },
+    });
   }
 
   // Staging-mode short-circuit: return a canned approval + a benign patch, no Anthropic spend.
