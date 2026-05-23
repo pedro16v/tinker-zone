@@ -39,7 +39,9 @@ Op shapes:
   2) set_text     { "op":"set_text", "target":<safe selector>, "value":<≤ 280> }
   3) set_theme    { "op":"set_theme", "theme":<one of light/dark/sunset/terminal/pastel> }
        Each theme is a bundle of --tz-bg/--tz-fg/--tz-accent values.
-  4) add_element  { "op":"add_element", "kind":<heading|paragraph|button-noop|divider|image|emoji-badge>, "container":<safe selector>, "text":<optional ≤ 280>, "class":<optional, one of tz-card/tz-hero/tz-muted/tz-pill>, "src":<image only; must start with "/"> }
+  4) add_element  { "op":"add_element", "kind":<heading|paragraph|button-noop|divider|emoji-badge>, "container":<safe selector>, "text":<optional ≤ 280>, "class":<optional, one of tz-card/tz-hero/tz-muted/tz-pill> }
+     For "image-y" prompts (animals, objects, scenes), use kind=emoji-badge with a fitting
+     emoji as text. There is no image library — never invent same-origin paths.
   5) set_attr     { "op":"set_attr", "target":<safe selector>, "attr":<class|alt|aria-label|title>, "value":<≤ 120>; if attr=class, value must be one of the palette }
 
 Safe selectors are single tokens — #id, .class, or tag name. NEVER target the widget

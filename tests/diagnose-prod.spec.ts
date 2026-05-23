@@ -17,6 +17,9 @@ const HDR = {
 };
 
 test("diagnose prod live-layer + catch-up", async ({ page, request }) => {
+  // Opt-in — this hits PROD, submits a real patch, and bills Anthropic. Run manually with:
+  //   RUN_PROD_DIAGNOSE=1 npx playwright test tests/diagnose-prod.spec.ts --project=desktop-1440 --reporter=list
+  test.skip(!process.env.RUN_PROD_DIAGNOSE, "manual diagnostic; set RUN_PROD_DIAGNOSE=1");
   test.setTimeout(120_000);
 
   const errors: string[] = [];
@@ -79,10 +82,9 @@ test("diagnose prod live-layer + catch-up", async ({ page, request }) => {
   });
   console.log("=== INITIAL STATE on load:", JSON.stringify(initial, null, 2));
 
-  // ---- 3. submit a test prompt via /submit and watch for the live broadcast ----
-  const stamp = Date.now().toString().slice(-6);
-  const probe = `change the tagline to: diagnose probe ${stamp}`;
-  console.log(`=== submitting probe: ${probe}`);
+  // ---- 3. submit a natural prompt that should clearly bind: change --tz-fg ----
+  const probe = `make all the text on the page bright orange`;
+  console.log(`=== submitting: ${probe}`);
   const submitRes = await request.post(`${SBF}/submit`, {
     headers: { ...HDR, "content-type": "application/json" },
     data: { prompt: probe },
@@ -94,8 +96,9 @@ test("diagnose prod live-layer + catch-up", async ({ page, request }) => {
   await page.waitForTimeout(5000);
 
   const afterSubmit = await page.evaluate(() => ({
+    bodyColor: getComputedStyle(document.body).color,
+    cssFgVar: getComputedStyle(document.documentElement).getPropertyValue("--tz-fg").trim(),
     tagline: document.getElementById("canvas-tagline")?.textContent ?? null,
-    title: document.getElementById("canvas-title")?.textContent ?? null,
   }));
   console.log("=== STATE after submit + 5s:", JSON.stringify(afterSubmit, null, 2));
 
@@ -107,8 +110,9 @@ test("diagnose prod live-layer + catch-up", async ({ page, request }) => {
   await page.waitForTimeout(6000);
 
   const afterReload = await page.evaluate(() => ({
+    bodyColor: getComputedStyle(document.body).color,
+    cssFgVar: getComputedStyle(document.documentElement).getPropertyValue("--tz-fg").trim(),
     tagline: document.getElementById("canvas-tagline")?.textContent ?? null,
-    title: document.getElementById("canvas-title")?.textContent ?? null,
   }));
   console.log("=== STATE after reload:", JSON.stringify(afterReload, null, 2));
 
