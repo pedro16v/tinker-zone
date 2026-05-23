@@ -21,7 +21,7 @@ body {
 }
 
 body {
-  background: var(--tz-bg);
+  background: linear-gradient(to bottom, #6b2c6b 0%, #ff8c42 100%);
   color: var(--tz-fg);
   font-family: var(--tz-font);
   display: grid;
@@ -30,8 +30,21 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+#canvas-root {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 #canvas-title {
   font-size: clamp(2rem, 8vw, 5rem);
   font-weight: 700;
   letter-spacing: -0.02em;
+}
+
+#canvas-tagline {
+  font-size: clamp(0.875rem, 2vw, 1.25rem);
+  opacity: 0.6;
+  font-weight: 400;
 }
