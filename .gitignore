@@ -5,6 +5,7 @@ dist/
 .env.*
 !.env.example
 .vercel
+supabase/.temp/
 coverage/
 test-results/
 playwright-report/
