@@ -126,29 +126,56 @@ Deno.serve(async (req) => {
     return json(200, { ok: false, reason: mod.reason ?? "not approved" });
   }
 
-  // Patch generation
+  // Patch generation. Two ways this can not produce a usable patch:
+  //   (a) patchgen throws — model couldn't emit valid JSON, or upstream error
+  //   (b) the patch parses but the validator rejects it (out-of-vocab op, unsafe selector, …)
+  // Both cases used to drop the prompt on the floor. Now they queue it as bake_only so the
+  // next bake batch picks it up and Claude Code implements the intent with full
+  // /canvas/ expressiveness (real CSS, real JS, real layout — none of which the live
+  // vocabulary can safely express).
   let patch: unknown;
+  let bakeOnly = false;
+  let bakeOnlyReason: string | null = null;
+  let rejectedPatch: unknown = null;
   try {
     patch = await patchgen(ANTHROPIC, prompt);
   } catch (e) {
-    return json(200, {
-      ok: false,
-      reason: "couldn't express that as a live patch yet (it'll ride into the next bake)",
-      detail: String(e).slice(0, 400),
-    });
+    bakeOnly = true;
+    bakeOnlyReason = "patchgen couldn't produce a live patch";
+    console.warn("patchgen threw, queueing bake_only:", String(e).slice(0, 200));
   }
 
-  // Validate (authoritative — never trust the wire)
-  const v = validatePatch(patch);
-  if (!v.ok) {
+  if (!bakeOnly) {
+    const v = validatePatch(patch);
+    if (!v.ok) {
+      bakeOnly = true;
+      bakeOnlyReason = "live vocabulary can't express this — queued for the next bake";
+      rejectedPatch = patch;
+      patch = null;
+    }
+  }
+
+  if (bakeOnly) {
+    const { data: inserted, error } = await supa
+      .from("live_patches")
+      .insert({ patch: null, prompt, status: "bake_only" })
+      .select("id")
+      .single();
+    if (error) return json(500, { error: "insert failed", detail: error.message });
+    if (email && inserted?.id) {
+      const { error: eErr } = await supa
+        .from("notification_emails")
+        .insert({ live_patch_id: inserted.id, email });
+      if (eErr) console.warn("notification_emails insert failed:", eErr.message);
+    }
+    // ok:true because the submission DID succeed — it's queued, not rejected. The widget
+    // distinguishes bake_only from live via the queued_for_bake flag.
     return json(200, {
-      ok: false,
-      reason: "patch rejected by validator",
-      errors: v.errors,
-      // Surface the rejected patch back to the submitter so they (and we) can see what the
-      // model emitted. It's the LLM's output, not executed, only visible to this caller —
-      // useful diagnostic, not a leak.
-      patch,
+      ok: true,
+      queued_for_bake: true,
+      reason: bakeOnlyReason,
+      // Surface the rejected patch (if any) as diagnostic; useful when iterating on prompts.
+      rejected_patch: rejectedPatch,
     });
   }
 

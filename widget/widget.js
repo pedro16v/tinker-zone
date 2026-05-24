@@ -188,7 +188,15 @@ import { initLiveLayer } from "./live-layer.js";
       let data = {};
       try { data = await res.json(); } catch {}
       if (res.ok && data.ok) {
-        status.textContent = email ? "Live! ✨ — we'll email when it ships." : "Live! ✨";
+        if (data.queued_for_bake) {
+          // The submission was accepted but the live vocabulary couldn't express it. It will
+          // be implemented properly by the bake step on the next batch.
+          status.textContent = email
+            ? "Too ambitious for live — queued for the next bake. We'll email when it ships. ⏳"
+            : "Too ambitious for live — queued for the next bake. ⏳";
+        } else {
+          status.textContent = email ? "Live! ✨ — we'll email when it ships." : "Live! ✨";
+        }
         prompt.value = "";
         emailInput.value = "";
         updateCount();
