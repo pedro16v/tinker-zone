@@ -23,11 +23,14 @@ body {
 }
 
 body {
-  background: linear-gradient(180deg,
-    repeating-linear-gradient(45deg, #000 0 30px, #fff 30px 60px) 0%,
-    repeating-linear-gradient(45deg, #000 0 30px, #fff 30px 60px) 50%,
-    var(--tz-bg) 50%,
-    var(--tz-bg) 100%);
+  /* IMPORTANT: keep this rule a single `background: var(--tz-bg)`. The live-layer drives
+     the background through this var (set_css_var on --tz-bg). A previous bake replaced this
+     with a nested-gradient-stop construct that is invalid CSS — the browser silently fell
+     back to transparent, breaking every live patch that tried to set the background.
+     If you want partial-area or layered backgrounds, do it with background-image +
+     background-size + background-position on separate layers, NEVER with gradients nested
+     inside gradient stops. */
+  background: var(--tz-bg);
   color: var(--tz-fg);
   font-family: var(--tz-font);
   display: flex;

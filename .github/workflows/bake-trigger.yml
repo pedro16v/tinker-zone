@@ -89,6 +89,18 @@ jobs:
             echo "Edit only /canvas/. Add no dependencies. Never reference the widget."
             echo "Interactive behavior (keyboard shortcuts, hover, animations) belongs in"
             echo "canvas/scripts/canvas.js and canvas/styles/canvas.css. No inline event handlers."
+            echo
+            echo "VALID CSS ONLY. Common pitfalls that previous bakes have fallen into:"
+            echo " - NEVER nest a gradient inside another gradient's color stop. A stop is"
+            echo "   <color> [<position>], not a function. The browser silently falls back"
+            echo "   to transparent and the whole background breaks. For layered or partial-"
+            echo "   area backgrounds use multiple background-image layers with background-"
+            echo "   size and background-position — never nested gradient stops."
+            echo " - Keep \`body { background: var(--tz-bg); }\` as a SIMPLE single-value rule."
+            echo "   The live layer drives this var via set_css_var; any compound construct"
+            echo "   that doesn't accept arbitrary --tz-bg values breaks the live layer."
+            echo " - Test your CSS mentally: every declaration must parse as valid CSS or it"
+            echo "   is silently dropped by the browser."
           } > /tmp/body.md
 
           ISSUE_URL=$(gh issue create \
