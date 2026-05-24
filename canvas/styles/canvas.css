@@ -23,7 +23,11 @@ body {
 }
 
 body {
-  background: var(--tz-bg);
+  background: linear-gradient(180deg,
+    repeating-linear-gradient(45deg, #000 0 30px, #fff 30px 60px) 0%,
+    repeating-linear-gradient(45deg, #000 0 30px, #fff 30px 60px) 50%,
+    var(--tz-bg) 50%,
+    var(--tz-bg) 100%);
   color: var(--tz-fg);
   font-family: var(--tz-font);
   display: flex;
